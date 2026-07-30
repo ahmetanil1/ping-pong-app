@@ -9,7 +9,7 @@ type Config struct {
 
 func Load() *Config {
 	return &Config{
-		ServerPort: getEnv("PORT", "8080"),
+		ServerPort: getEnv("PING_SERVICE_PORT", "8080"),
 		// Gateway gibi çalışması için pong-service URL'sini de config'e ekledik
 		PongURL:    getEnv("PONG_SERVICE_URL", "http://localhost:8081"),
 	}
