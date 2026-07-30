@@ -1,0 +1,90 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: ping-pong-postgres
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "${DB_PORT}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    # The restart policy is set to "unless-stopped", which means the container will always restart unless it is explicitly stopped by the user. 
+    # This is useful for ensuring that the database service remains available even after a system reboot or if the container crashes.
+    #restart: unless-stopped
+    restart: always 
+    # the restart policy is set to "always", which means the container will always restart regardless of the exit status.
+    # This is useful for ensuring that the database service remains available even after a system reboot or if the container crashes.
+    healthcheck:
+      # CMD-SHELL runs a command in the shell of the container. That's why we define postgres-15:"alpine" as the base image. It has a shell and the pg_isready command.    
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s # Test db connection every 10 seconds
+      timeout: 5s # Wait 5 seconds for the test to complete
+      retries: 5 # Retry 5 times before considering the container unhealthy
+    networks:
+      - backend-net
+  redis-cache:
+    image: redis:7-alpine
+    container_name: ping-pong-redis
+    ports: 
+      - "${REDIS_PORT}:6379"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli", "ping"]
+      interval: 10s # Test redis connection every 10 seconds
+      timeout: 5s # Wait 5 seconds for the test to complete
+      retries: 5 # Retry 5 times before considering the container unhealthy
+      start_period: 10s # Wait 10 seconds before starting health checks
+    networks:
+      - backend-net
+  pong-service:
+    build:
+      context: ./pong-service
+      dockerfile: Dockerfile
+    container_name: pong-service
+    restart: always
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+    ports:
+      - "${PONG_SERVICE_PORT}:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis-cache:
+        condition: service_healthy
+    networks:
+      - backend-net
+  ping-service:
+    build:
+      context: ./ping-service
+      dockerfile: Dockerfile
+    container_name: ping-service
+    restart: always
+    environment:
+      PONG_SERVICE_URL: ${PONG_SERVICE_URL}
+    ports:
+      - "${PING_SERVICE_PORT}:8080"
+    depends_on:
+      - pong-service
+    networks:
+      - backend-net
+      - frontend-net
+
+volumes:
+  postgres_data:
+
+networks:
+  frontend-net:
+    driver: bridge
+    name: pingpong-frontend-net
+
+  backend-net:
+    driver: bridge
+    name: pingpong-backend-net
+    internal: true # This network is internal, meaning it cannot be accessed from outside the Docker host. This is a security measure to prevent external access to the backend services.
