@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ping-service-config
+data:
+  PONG_SERVICE_URL: "http://pong-service:8081"
+  PING_SERVICE_PORT: "8080"

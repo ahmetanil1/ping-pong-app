@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      nodeSelector:
+        workload: application
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          env:
+            - name: REDIS_PORT
+              valueFrom:
+                ConfigMapKeyRef:
+                  name: redis-config
+                  key: REDIS_PORT
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "128Mi"
+              cpu: "100m"
+          livenessProbe:
+            exec:
+              command:
+                - redis-cli
+                - ping
+            initialDelaySeconds: 10 # Wait 10 seconds before starting health checks
+            periodSeconds: 10 # Test redis connection every 10 seconds
+            timeoutSeconds: 5 # Wait 5 seconds for the test to complete
+            failureThreshold: 5 # Retry 5 times before considering the container unhealthy
+          readinessProbe:
+            exec:
+              command:
+                - redis-cli
+                - ping
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3 

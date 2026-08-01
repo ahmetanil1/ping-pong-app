@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ping-service
+spec:
+  type: NodePort
+  ports:
+    - port: 8080
+      targetPort: 8080
+      # The nodePort is set to 30080, which means that the service will be accessible on port 30080 of the nodes in the cluster.
+      # It has vulnerabilities, so it should be used with caution.
+      # In production, it's better to use a LoadBalancer or Ingress for external access.
+      nodePort: 30080
+  selector:
+    app: ping-service

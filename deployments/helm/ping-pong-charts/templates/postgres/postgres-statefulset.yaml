@@ -1,0 +1,100 @@
+# DB is a stateful service, so we use a StatefulSet instead of a Deployment(stateless) to manage it
+kind: StatefulSet
+metadata:
+  name: postgres-statefulset
+spec:
+  serviceName: "postgres-service"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      nodeSelector:
+        workload: database
+      # Tolerations allow the pod to be scheduled on nodes with matching taints. 
+      # We want to allow the pod to be scheduled on nodes that have the "workload=database" taint.
+      tolerations:
+        - key: "workload"
+          operator: "Equal"
+          value: "database"
+          effect: "NoSchedule"
+      containers:
+        - name: postgres
+          image: postgres:15-alpine
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: postgres-config
+                  key: POSTGRES_DB
+            - name: POSTGRES_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: postgres-config
+                  key: POSTGRES_USER
+            - name: POSTGRES_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: postgres-config
+                  key: POSTGRES_PORT
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_PASSWORD
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "250m"
+              memory: "512Mi"
+
+          livenessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - postgres
+                - -d
+                - pingpongdb
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5
+          readinessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - postgres
+                - -d
+                - pingpongdb
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql/data
+  # StatefulSets use volumeClaimTemplates instead of a standalone PVC to dynamically bind 
+  # persistent storage to each pod's unique ordinal identity (e.g., pod-0, pod-1). 
+  # This guarantees storage persistence and prevents mount conflicts during scaling or failovers.
+
+  # The volumeClaimTemplates section defines a PersistentVolumeClaim (PVC) template that will be used to create a unique PVC for each pod in the StatefulSet. (pvc1=pod1, pvc2=pod2, etc.) 
+  ### If we use the own PVC instead of volumeClaimTemplates, all pods will share the same PVC, which can lead to data corruption and conflicts when multiple pods try to write to the same storage simultaneously. (pvc1(own pvc)=pod1, pvc1=pod2, etc.)
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-storage
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 2Gi
