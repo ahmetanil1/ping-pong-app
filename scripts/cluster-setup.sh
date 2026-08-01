@@ -4,8 +4,8 @@
 set -euo pipefail
 
 CLUSTER_NAME="hepapi-cluster"
-MIN_CPUS=2
-MIN_MEMORY=4096
+MIN_CPUS=1
+MIN_MEMORY=2048
 
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -44,11 +44,20 @@ else
     minikube start \
         -p "$CLUSTER_NAME" \
         --driver=docker \
+        --nodes=2 \
         --cpus="$MIN_CPUS" \
         --memory="$MIN_MEMORY" \
         --kubernetes-version=v1.30.0
     echo -e "${GREEN}Minikube cluster '$CLUSTER_NAME' created successfully.${NC}"
 fi
+
+# Taints are used to differentiate between database and application workloads.
+echo -e "${YELLOW}Configuring Database Node (${CLUSTER_NAME})...${NC}"
+kubectl label node "$CLUSTER_NAME" workload=database --overwrite
+kubectl taint node "$CLUSTER_NAME" workload=database:NoSchedule --overwrite
+
+echo -e "${YELLOW}Configuring Application Node (${CLUSTER_NAME}-m02)...${NC}"
+kubectl label node "$CLUSTER_NAME-m02" workload=application --overwrite
 
 # Enable required cluster addons for metrics-server, and storage provisioner.
 echo -e "${YELLOW}[4/4] Enabling required cluster addons.${NC}"
