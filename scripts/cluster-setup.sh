@@ -4,7 +4,7 @@
 set -euo pipefail
 
 CLUSTER_NAME="hepapi-cluster"
-MIN_CPUS=1
+MIN_CPUS=2
 MIN_MEMORY=2048
 
 GREEN='\033[0;32m'
