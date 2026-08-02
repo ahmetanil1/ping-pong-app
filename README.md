@@ -56,7 +56,7 @@ Proje mimarisi **Network Isolation** ilkelerine uygun olarak iki temel alana ayr
 * Make (İsteğe bağlı)
 
 #### 1. Cluster Topology ve Namespace İzolasyonu
-```bash
+
 # Cluster konfigürasyonunu ve namespace izolasyonunu başlatın
 bash scripts/cluster-setup.sh
 2. Helm ile Deploy Etme
