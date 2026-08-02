@@ -1,6 +1,9 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: pong-service-config
+  name: {{ include "hepapi-case.fullname" . }}-pong-config
+  labels:
+    {{- include "hepapi-case.labels" . | nindent 4 }}
+    app.kubernetes.io/component: pong-service
 data:
-  PONG_SERVICE_PORT: "8081"
+  PONG_SERVICE_PORT: {{ .Values.pongService.service.port | quote }}

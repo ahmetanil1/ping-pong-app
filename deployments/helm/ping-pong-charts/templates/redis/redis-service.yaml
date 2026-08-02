@@ -1,11 +1,17 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: redis-service
+  name: {{ include "hepapi-case.fullname" . }}-redis-cache
+  labels:
+    {{- include "hepapi-case.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
 spec:
   type: ClusterIP
   ports:
-    - port: 6379
-      targetPort: 6379
-  selector: 
-    app: redis
+    - port: {{ .Values.redis.service.port }}
+      targetPort: {{ .Values.redis.service.port }}
+      protocol: TCP
+      name: redis
+  selector:
+    {{- include "hepapi-case.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: redis

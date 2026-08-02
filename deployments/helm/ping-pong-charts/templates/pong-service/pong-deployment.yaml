@@ -1,89 +1,103 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: pong-service-deployment
+  name: {{ include "hepapi-case.fullname" . }}-pong-deployment
+  labels:
+    {{- include "hepapi-case.labels" . | nindent 4 }}
+    app.kubernetes.io/component: pong-service
 spec:
   # Resources managed by HPA, so we don't set replicas here. HPA will manage the number of replicas based on CPU utilization.
   # Identifying the replica might be helpful, but it could create race conditions.
-  # replicas: 2
+  # replicas: {{ .Values.pongService.replicaCount }}
   selector:
     matchLabels:
-      app: pong-service
+      {{- include "hepapi-case.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: pong-service
   template:
     metadata:
       labels:
-        app: pong-service
+        {{- include "hepapi-case.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: pong-service
     spec:
+      # Graceful shutdown period: Provides up to 30 seconds for the pod to terminate cleanly 
+      # before Kubernetes forcibly kills the container with SIGKILL.
+      terminationGracePeriodSeconds: 30
       # Security context is set to run the container as a non-root user with a specific user ID (65532). 
       # This enhances security by preventing the container from running with root privileges.
       securityContext:
-        runAsNonRoot: true
-        runAsUser: 65532
+        runAsNonRoot: {{ .Values.pongService.securityContext.runAsNonRoot }}
+        runAsUser: {{ .Values.pongService.securityContext.runAsUser }}
+      {{- if .Values.global.nodeSelectors.application }}
       nodeSelector:
-        workload: application
+        workload: {{ .Values.global.nodeSelectors.application | quote }}
+      {{- end }}
       containers:
         - name: pong-service
-          image: pong-service:latest
+          image: "{{ .Values.pongService.image.repository }}:{{ .Values.pongService.image.tag }}"
+          # Image pull policy is set to "Never" to ensure that the local Docker image is used in Minikube.
+          # This is useful for development and testing purposes, as it allows you to use the latest local build of the pong-service without pulling from a remote registry.
+          imagePullPolicy: {{ .Values.pongService.image.pullPolicy }}
+          # Pre-stop hook: Pauses container termination for 5 seconds to allow Kubernetes DNS 
+          # and Ingress/Service endpoints to update, ensuring zero-downtime during rolling updates.
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 5"]
           # non-root user is used to run the container (same as the Dockerfile)
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
               drop:
                 - ALL
-          # Image pull policy is set to "Never" to ensure that the local Docker image is used in Minikube.
-          # This is useful for development and testing purposes, as it allows you to use the latest local build of the pong-service without pulling from a remote registry.
-          imagePullPolicy: Never 
+          ports:
+            - containerPort: {{ .Values.pongService.service.port }}
+              name: http
           env:
             - name: DB_HOST
-              value: "postgres-service"
+              value: {{ include "hepapi-case.fullname" . }}-postgres
             - name: DB_PORT
-              value: "5432"
+              value: {{ .Values.postgres.config.port | quote }}
             - name: DB_NAME
               valueFrom:
                 configMapKeyRef:
-                  name: postgres-config
+                  name: {{ include "hepapi-case.fullname" . }}-postgres-config
                   key: POSTGRES_DB
             - name: DB_USER
               valueFrom:
                 configMapKeyRef:
-                  name: postgres-config
+                  name: {{ include "hepapi-case.fullname" . }}-postgres-config
                   key: POSTGRES_USER
             - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: postgres-secret
+                  name: {{ include "hepapi-case.fullname" . }}-postgres-secret
                   key: POSTGRES_PASSWORD
             - name: PONG_SERVICE_PORT
               valueFrom: 
                 configMapKeyRef:
-                  name: pong-service-config
+                  name: {{ include "hepapi-case.fullname" . }}-pong-config
                   key: PONG_SERVICE_PORT
             - name: REDIS_HOST
-              value: "redis-service"
+              value: {{ include "hepapi-case.fullname" . }}-redis-cache
             - name: REDIS_PORT
-              value: "6379"
-
+              value: {{ .Values.redis.service.port | quote }}
           resources:
-            requests:
-              cpu: "20m"
-              memory: "32Mi"
-            limits:
-              cpu: "100m"
-              memory: "128Mi"
-
+            {{- toYaml .Values.pongService.resources | nindent 12 }}
+          # Liveness probe is configured to check the health of the pong-service application and restart the container if it becomes unresponsive.
           livenessProbe:
             httpGet:
               path: /healthz/liveness
-              port: 8081
-            initialDelaySeconds: 10
-            periodSeconds: 10
-            timeoutSeconds: 5
-            failureThreshold: 5
+              port: {{ .Values.pongService.service.port }}
+            initialDelaySeconds: 2
+            periodSeconds: 3
+            timeoutSeconds: 1
+            failureThreshold: 3
+          # Readiness probe is configured to check the health of the pong-service application before it starts receiving traffic.
           readinessProbe:
             httpGet:
               path: /healthz/readiness
-              port: 8081
-            initialDelaySeconds: 10
+              port: {{ .Values.pongService.service.port }}
+            initialDelaySeconds: 5
             periodSeconds: 10
-            timeoutSeconds: 5
-            failureThreshold: 5
+            timeoutSeconds: 2
+            failureThreshold: 3

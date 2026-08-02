@@ -1,20 +1,16 @@
-global: 
+global:
   nodeSelectors:
     application: "application"
     database: "database"
 
---- 
 redis:
-  enabled: true
   replicaCount: 1
   image:
     repository: redis
     tag: 7-alpine
     pullPolicy: IfNotPresent
   service:
-    type: ClusterIP
     port: 6379
-    targetPort: 6379
   resources:
     requests:
       cpu: "10m"
@@ -22,21 +18,8 @@ redis:
     limits:
       cpu: "50m"
       memory: "64Mi"
-  probes:
-    liveness:
-      initialDelaySeconds: 10
-      periodSeconds: 10
-      timeoutSeconds: 5
-      failureThreshold: 5
-    readiness:
-      initialDelaySeconds: 5
-      periodSeconds: 10
-      timeoutSeconds: 5
-      failureThreshold: 3
 
----
 postgres:
-  enabled: true
   replicaCount: 1
   image:
     repository: postgres
@@ -46,13 +29,13 @@ postgres:
     user: "postgres"
     db: "pingpongdb"
     port: 5432
+  # this password is used for the demonstration purpose only.
+  # In production, we have to use a more security tools like HashiCorp Vault or AWS Secrets Manager to manage the secrets.
   secret:
     password: "postgres"
-  service:
-    type: ClusterIP
-    port: 5432
-    targetPort: 5432
   persistence:
+    # storage class is set to empty string to use the default storage class of the cluster
+    # If you want to use a specific storage class, you can set the value of storageClass to the name of the desired storage class like AWS EBS.
     storageClass: ""
     accessMode: ReadWriteOnce
     size: 2Gi
@@ -63,30 +46,15 @@ postgres:
     limits:
       cpu: "250m"
       memory: "512Mi"
-  probes:
-    liveness:
-      initialDelaySeconds: 15
-      periodSeconds: 10
-      timeoutSeconds: 5
-      failureThreshold: 5
-    readiness:
-      initialDelaySeconds: 5
-      periodSeconds: 5
-      timeoutSeconds: 3
-      failureThreshold: 3
 
 pongService:
-  enabled: true
   replicaCount: 2
   image:
     repository: pong-service
     tag: latest
-    pullPolicy: Never 
-  port: 8081
+    pullPolicy: Never
   service:
-    type: ClusterIP
     port: 8081
-    targetPort: 8081
   resources:
     requests:
       cpu: "20m"
@@ -95,7 +63,6 @@ pongService:
       cpu: "100m"
       memory: "128Mi"
   hpa:
-    enabled: true
     minReplicas: 2
     maxReplicas: 3
     targetCPUUtilizationPercentage: 70
@@ -103,15 +70,12 @@ pongService:
     runAsNonRoot: true
     runAsUser: 65532
 
-
 pingService:
-  enabled: true
   replicaCount: 2
   image:
     repository: ping-service
     tag: latest
-    pullPolicy: Never 
-  port: 8080
+    pullPolicy: Never
   service:
     type: NodePort
     port: 8080
@@ -125,7 +89,6 @@ pingService:
       cpu: "100m"
       memory: "128Mi"
   hpa:
-    enabled: true
     minReplicas: 2
     maxReplicas: 3
     targetCPUUtilizationPercentage: 70

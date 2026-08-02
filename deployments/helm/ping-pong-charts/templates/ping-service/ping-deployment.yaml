@@ -1,28 +1,44 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: ping-service-deployment
+  name: {{ include "hepapi-case.fullname" . }}-ping-deployment
+  labels:
+    {{- include "hepapi-case.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ping-service
 spec:
   # Resources managed by HPA, so we don't set replicas here. HPA will manage the number of replicas based on CPU utilization.
-  # replicas: 2
-  selector: 
+  # replicas: {{ .Values.pingService.replicaCount }}
+  selector:
     matchLabels:
-      app: ping-service
+      {{- include "hepapi-case.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: ping-service
   template:
     metadata:
       labels:
-        app: ping-service
+        {{- include "hepapi-case.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: ping-service
     spec:
+      # Graceful shutdown period: Provides up to 30 seconds for the pod to terminate cleanly 
+      # before Kubernetes forcibly kills the container with SIGKILL.
+      terminationGracePeriodSeconds: 30
       # Security context is set to run the container as a non-root user with a specific user ID (65532). 
       # This enhances security by preventing the container from running with root privileges.
       securityContext:
-        runAsNonRoot: true
-        runAsUser: 65532
+        runAsNonRoot: {{ .Values.pingService.securityContext.runAsNonRoot }}
+        runAsUser: {{ .Values.pingService.securityContext.runAsUser }}
+      {{- if .Values.global.nodeSelectors.application }}
       nodeSelector:
-        workload: application
+        workload: {{ .Values.global.nodeSelectors.application | quote }}
+      {{- end }}
       containers:
         - name: ping-service
-          image: ping-service
+          image: "{{ .Values.pingService.image.repository }}:{{ .Values.pingService.image.tag }}"
+          # Pre-stop hook: Pauses container termination for 5 seconds to allow Kubernetes DNS 
+          # and Ingress/Service endpoints to update, ensuring zero-downtime during rolling updates.
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 5"]
           # non-root user is used to run the container (same as the Dockerfile)
           securityContext:
             allowPrivilegeEscalation: false
@@ -31,39 +47,36 @@ spec:
                 - ALL
           # Image pull policy is set to "Never" to ensure that the local Docker image is used in Minikube.
           # This is useful for development and testing purposes, as it allows you to use the latest local build of the ping-service without pulling from a remote registry.
-          imagePullPolicy: Never
+          imagePullPolicy: {{ .Values.pingService.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.pingService.service.port }}
+              name: http
           env:
             - name: PONG_SERVICE_URL
               valueFrom:
                 configMapKeyRef:
-                  name: ping-service-config
+                  name: {{ include "hepapi-case.fullname" . }}-ping-config
                   key: PONG_SERVICE_URL
             - name: PING_SERVICE_PORT
               valueFrom: 
                 configMapKeyRef:
-                  name: ping-service-config
-                  key: PONG_SERVICE_PORT
+                  name: {{ include "hepapi-case.fullname" . }}-ping-config
+                  key: PING_SERVICE_PORT
           resources:
-            requests:
-              cpu: "20m"
-              memory: "32Mi"
-            limits:
-              cpu: "100m"
-              memory: "128Mi"        
-
+            {{- toYaml .Values.pingService.resources | nindent 12 }}
           livenessProbe:
             httpGet:
               path: /healthz/liveness
-              port: 8080
-            initialDelaySeconds: 10
-            periodSeconds: 10
-            timeoutSeconds: 5
-            failureThreshold: 5
+              port: {{ .Values.pingService.service.port }}
+            initialDelaySeconds: 2
+            periodSeconds: 3
+            timeoutSeconds: 1
+            failureThreshold: 3
           readinessProbe:
             httpGet:
               path: /healthz/readiness
-              port: 8080
-            initialDelaySeconds: 10
+              port: {{ .Values.pingService.service.port }}
+            initialDelaySeconds: 5
             periodSeconds: 10
-            timeoutSeconds: 5
-            failureThreshold: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
