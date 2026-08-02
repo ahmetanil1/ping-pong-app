@@ -1,18 +1,23 @@
+{{- if .Values.pongService.hpa }}
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: pong-hpa
+  name: {{ include "hepapi-case.fullname" . }}-pong-hpa
+  labels:
+    {{- include "hepapi-case.labels" . | nindent 4 }}
+    app.kubernetes.io/component: pong-service
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: pong-service-deployment
-  minReplicas: 2
-  maxReplicas: 3
+    name: {{ include "hepapi-case.fullname" . }}-pong-deployment
+  minReplicas: {{ .Values.pongService.hpa.minReplicas }}
+  maxReplicas: {{ .Values.pongService.hpa.maxReplicas }}
   metrics:
-  - type: Resource
-    resource:
-      name: cpu
-      target:
-        type: Utilization
-        averageUtilization: 70
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.pongService.hpa.targetCPUUtilizationPercentage }}
+{{- end }}

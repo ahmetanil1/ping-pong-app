@@ -1,18 +1,23 @@
+{{- if .Values.pingService.hpa }}
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: ping-service-hpa
+  name: {{ include "hepapi-case.fullname" . }}-ping-hpa
+  labels:
+    {{- include "hepapi-case.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ping-service
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: ping-service-deployment
-  minReplicas: 2
-  maxReplicas: 3
+    name: {{ include "hepapi-case.fullname" . }}-ping-deployment
+  minReplicas: {{ .Values.pingService.hpa.minReplicas }}
+  maxReplicas: {{ .Values.pingService.hpa.maxReplicas }}
   metrics:
     - type: Resource
       resource:
         name: cpu
         target:
           type: Utilization
-          averageUtilization: 70
+          averageUtilization: {{ .Values.pingService.hpa.targetCPUUtilizationPercentage }}
+{{- end }}
