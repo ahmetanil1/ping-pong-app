@@ -56,7 +56,7 @@ jobs:
 
       - name: Lint Helm Charts
         run: |
-          helm lint deployments/
+          helm lint deployments/helm/ping-pong-charts
   # ==========================================
   security-scan:
     name: Native Security & CodeQL Scan
