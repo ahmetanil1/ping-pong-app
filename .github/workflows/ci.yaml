@@ -35,6 +35,9 @@ jobs:
         with:
           go-version: 1.24.6
           cache: true
+          cache-dependency-path: |
+            ${{ matrix.service }}/go.sum
+            ${{ matrix.service }}/go.mod
 
       - name: Run go unit tests
         run: |
@@ -60,19 +63,26 @@ jobs:
   # ==========================================
   security-scan:
     name: Native Security & CodeQL Scan
-    needs: [test-services] # Testler biter bitmez çalışır (PR ve Push'ta aktiftir)
+    needs: [test-services]
     runs-on: ubuntu-latest
+
+    permissions:
+      security-events: write
+      packages: read
+      actions: read
+      contents: read
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           languages: go
-      
+
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
 
       - name: Dependency Review (PR Check)
         if: github.event_name == 'pull_request'
@@ -80,7 +90,7 @@ jobs:
   # ==========================================
   build-and-push:
     name: Build and Push (${{ matrix.service }})
-    needs: [test-services, lint-helm, security-scan] # Güvenlik taraması da geçerse çalışır
+    needs: [test-services, lint-helm, security-scan]
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
     strategy:
@@ -109,7 +119,7 @@ jobs:
             type=sha,prefix=,format=short
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-      
+
       - name: Build and Push Docker Images
         uses: docker/build-push-action@v5
         with:
