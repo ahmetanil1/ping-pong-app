@@ -3,7 +3,7 @@
 # We use a multi-stage build to keep the final image small and secure. 
 # The first stage uses the official Golang image to compile the application
 # while the second stage uses a minimal Alpine Linux image to run the compiled binary.
-FROM golang:1.26-alpine AS builder
+FROM golang:1.24.6-alpine AS builder
 
 # Set the Current Working Directory inside the container
 WORKDIR /app
