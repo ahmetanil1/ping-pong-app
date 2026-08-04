@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+    # every push to main will trigger the workflow, except for changes to the following files
     paths-ignore:
       - "**.md"
       - ".gitignore"
@@ -23,10 +24,15 @@ jobs:
   test-services:
     name: Test (${{ matrix.service }})
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     strategy:
+      # matrix allows us to run the same job for multiple services (ping-service and pong-service) in PARALLEL
+      # run the same steps for each service, but in separate runners
       matrix:
         service: [ping-service, pong-service]
     steps:
+        # Checkout the code from the repository to the runner's workspace
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -34,6 +40,7 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version: 1.24.6
+          # Use Go module caching to speed up builds and tests
           cache: true
           cache-dependency-path: |
             ${{ matrix.service }}/go.sum
@@ -48,6 +55,8 @@ jobs:
   lint-helm:
     name: Lint Helm Charts
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -65,13 +74,9 @@ jobs:
     name: Native Security & CodeQL Scan
     needs: [test-services]
     runs-on: ubuntu-latest
-
     permissions:
-      security-events: write
-      packages: read
-      actions: read
       contents: read
-
+      security-events: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -84,6 +89,8 @@ jobs:
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4
 
+        # DRA helps you identify and remediate known vulnerabilities in your dependencies.
+        # It is recommended to run this action on pull requests to catch vulnerabilities before they are merged into the main branch.
       - name: Dependency Review (PR Check)
         if: github.event_name == 'pull_request'
         uses: actions/dependency-review-action@v4
@@ -96,6 +103,9 @@ jobs:
     strategy:
       matrix:
         service: [ping-service, pong-service]
+    permissions:
+      contents: read
+      actions: read
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -110,6 +120,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Extract Metadata (tags, labels) for Docker
+        # id: meta => This step generates metadata which can be used in subsequent steps.
         id: meta
         uses: docker/metadata-action@v5
         with:
@@ -117,8 +128,6 @@ jobs:
           tags: |
             type=raw,value=latest
             type=sha,prefix=,format=short
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
 
       - name: Build and Push Docker Images
         uses: docker/build-push-action@v5
@@ -128,5 +137,6 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          # Use GitHub Actions cache to speed up Docker builds by caching layers between builds
           cache-from: type=gha
           cache-to: type=gha,mode=max
