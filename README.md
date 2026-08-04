@@ -60,14 +60,14 @@ Geliştirme süreçlerindeki insan faktörünü ortadan kaldıran, güvenlik oda
 **Ön Gereksinimler: Docker & Minikube, kubectl CLI, Helm v3, Make**
 
 1. Cluster Topology ve Namespace İzolasyonu
-Bash
+
 ### Cluster konfigürasyonunu ve namespace izolasyonunu başlatın
-bash scripts/cluster-setup.sh
+scripts/cluster-setup.sh
 
 2. Helm ile Deploy Etme (Local Automation)
 Geliştirici ergonomisini (DX) artırmak için local distributions Makefile üzerinden standartlaştırılmıştır.
 
-Bash
+
 ### Helm bağımlılıklarını güncelleyip Minikube üzerine dağıtımı yapın
 make deploy
 
@@ -75,18 +75,20 @@ make deploy
 helm upgrade --install ping-pong-app ./deployments/helm/ping-pong-charts -n ping-pong
 
 3. Servislere Erişme (Local Port-Forwarding)
-Bash
+
 ### Ping servisi tünelleme (Public Zone)
 kubectl port-forward svc/ping-pong-app-hepapi-case-ping-service 8080:8080 -n ping-pong
 
 ### Pong servisi tünelleme (İzole Katman Debug İçin)
 kubectl port-forward svc/ping-pong-app-hepapi-case-pong-service 8081:8081 -n ping-pong
+
+
 🧪 Yük ve Autoscaling (HPA) Testi
 HPA mekanizmasının ping ve pong servislerini eşzamanlı olarak 3 replikaya çıkardığını doğrulamak için paralelleştirilmiş yük testi:
 
-Bash
+
 while true; do curl -s http://localhost:8080/ping > /dev/null; done &
+
 Canlı HPA ve Pod ölçeklenmesini izlemek için:
 
-Bash
 kubectl get hpa -n ping-pong -w
