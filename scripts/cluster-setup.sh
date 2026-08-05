@@ -54,16 +54,26 @@ fi
 # Taints are used to differentiate between database and application workloads.
 echo -e "${YELLOW}Configuring Database Node (${CLUSTER_NAME})...${NC}"
 kubectl label node "$CLUSTER_NAME" workload=database --overwrite
-kubectl taint node "$CLUSTER_NAME" workload=database:NoSchedule --overwrite
-
 echo -e "${YELLOW}Configuring Application Node (${CLUSTER_NAME}-m02)...${NC}"
 kubectl label node "$CLUSTER_NAME-m02" workload=application --overwrite
 
+
 # Enable required cluster addons for metrics-server, and storage provisioner.
 echo -e "${YELLOW}[4/4] Enabling required cluster addons.${NC}"
+minikube addons enable ingress -p "$CLUSTER_NAME" # Enable ingress controller for routing external traffic to services
 minikube addons enable metrics-server -p "$CLUSTER_NAME" # Enable metrics-server for resource monitoring
 minikube addons enable storage-provisioner -p "$CLUSTER_NAME" # Enable default storage provisioner for dynamic volume provisioning.
 
+echo -e "${YELLOW}Waiting for Ingress deployment to be created in API server...${NC}"
+# Ensure the Ingress deployment is created before applying the taint to avoid scheduling issues.
+sleep 3
+# Why we patch the Ingress deployment:
+# If we don't patch it, the K8s scheduler might randomly place the Ingress pod on the Database Node before the taint is applied.
+# Since the taint is "NoSchedule" (which prevents new scheduling but doesn't evict existing pods), Ingress would stay there.
+# This breaks database isolation, consumes DB node resources, and creates an unpredictable topology upon restarts.
+# By patching with a nodeSelector, we strictly pin the Ingress to the Application Node, keeping the DB Node completely isolated.
+
+kubectl taint node "$CLUSTER_NAME" workload=database:NoSchedule --overwrite
 kubectl config use-context "$CLUSTER_NAME" > /dev/null # Set the current context to the created cluster
 
 echo -e "${GREEN}==================================================${NC}"
