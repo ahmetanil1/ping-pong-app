@@ -1,0 +1,4 @@
+global:
+  nodeSelectors:
+    application: "application"
+    database: "database"

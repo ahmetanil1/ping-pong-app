@@ -1,0 +1,29 @@
+nameSuffix: ping             
+componentLabel: ping-service  
+serviceResourceName: ping-service  
+
+replicaCount: 2
+image:
+  repository: ping-service
+  tag: latest
+  pullPolicy: Never
+service:
+  type: NodePort
+  port: 8080
+  targetPort: 8080
+  nodePort: 30080
+  name: http
+resources:
+  requests:
+    cpu: "20m"
+    memory: "32Mi"
+  limits:
+    cpu: "100m"
+    memory: "128Mi"
+hpa:
+  minReplicas: 2
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 70
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 65532

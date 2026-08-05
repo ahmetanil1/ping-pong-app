@@ -1,0 +1,30 @@
+{{- range $key := list "ping-service" "pong-service" "redis" "postgres" }}
+{{- $v := index $.Values $key }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  # the service name has to be the same as the docker-compose service name
+  # if it is different, the application will not be able to connect to the database
+  # because the DNSCore will not be able to resolve the service name to the correct IP address
+  name: {{ include "hepapi-case.fullname" $ }}-{{ $v.serviceResourceName }}
+  labels:
+    {{- include "hepapi-case.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $v.componentLabel }}
+spec:
+  type: {{ $v.service.type }}
+  ports:
+    - port: {{ $v.service.port }}
+      targetPort: {{ $v.service.targetPort }}
+      {{- if $v.service.nodePort }}
+      # The nodePort is set to 30080, which means that the service will be accessible on port 30080 of the nodes in the cluster.
+      # It has vulnerabilities, so it should be used with caution.
+      # In production, it's better to use a LoadBalancer or Ingress for external access.
+      nodePort: {{ $v.service.nodePort }}
+      {{- end }}
+      protocol: TCP
+      name: {{ $v.service.name }}
+  selector:
+    {{- include "hepapi-case.selectorLabels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $v.componentLabel }}
+{{- end }}

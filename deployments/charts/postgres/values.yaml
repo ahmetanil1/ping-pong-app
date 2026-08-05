@@ -1,0 +1,34 @@
+nameSuffix: postgres
+componentLabel: postgres
+serviceResourceName: postgres
+
+replicaCount: 1
+image:
+  repository: postgres
+  tag: 15-alpine
+  pullPolicy: IfNotPresent
+config:
+  user: "postgres"
+  db: "pingpongdb"
+# this password is used for the demonstration purpose only.
+# In production, we have to use a more security tools like HashiCorp Vault or AWS Secrets Manager to manage the secrets.
+secret:
+  password: "postgres"
+persistence:
+  # storage class is set to empty string to use the default storage class of the cluster
+  # If you want to use a specific storage class, you can set the value of storageClass to the name of the desired storage class like AWS EBS.
+  storageClass: ""
+  accessMode: ReadWriteOnce
+  size: 2Gi
+service:
+  type: ClusterIP
+  port: 5432
+  targetPort: 5432
+  name: postgres
+resources:
+  requests:
+    cpu: "100m"
+    memory: "256Mi"
+  limits:
+    cpu: "250m"
+    memory: "512Mi"

@@ -1,0 +1,29 @@
+{{- range $key := list "ping-service" "pong-service" "redis" "postgres" }}
+{{- $v := index $.Values $key }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "hepapi-case.fullname" $ }}-{{ $v.nameSuffix }}-config
+  labels:
+    {{- include "hepapi-case.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $v.componentLabel }}
+data:
+
+  {{- if eq $key "ping-service" }}
+  PONG_SERVICE_URL: "http://{{ include "hepapi-case.fullname" $ }}-{{ $.Values.pongService.serviceResourceName }}:{{ $.Values.pongService.service.port }}"
+  PING_SERVICE_PORT: {{ $v.service.port | quote }}
+
+  {{- else if eq $key "pong-service" }}
+  PONG_SERVICE_PORT: {{ $v.service.port | quote }}
+
+  {{- else if eq $key "redis" }}
+  REDIS_PORT: {{ $v.service.port | quote }}
+
+  {{- else if eq $key "postgres" }}
+  POSTGRES_USER: {{ $v.config.user | quote }}
+  POSTGRES_DB: {{ $v.config.db | quote }}
+  POSTGRES_PORT: {{ $v.config.port | quote }}
+
+  {{- end }}
+{{- end }}

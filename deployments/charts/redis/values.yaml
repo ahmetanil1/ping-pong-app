@@ -1,0 +1,22 @@
+nameSuffix: redis
+componentLabel: redis
+serviceResourceName: redis-cache 
+
+
+replicaCount: 1
+image:
+  repository: redis
+  tag: 7-alpine
+  pullPolicy: IfNotPresent
+service:
+  type: ClusterIP
+  port: 6379
+  targetPort: 6379
+  name: redis
+resources:
+  requests:
+    cpu: "10m"
+    memory: "16Mi"
+  limits:
+    cpu: "50m"
+    memory: "64Mi"

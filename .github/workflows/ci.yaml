@@ -68,7 +68,7 @@ jobs:
 
       - name: Lint Helm Charts
         run: |
-          helm lint deployments/helm/ping-pong-charts
+          helm lint deployments
   # ==========================================
   security-scan:
     name: Native Security & CodeQL Scan
@@ -140,3 +140,5 @@ jobs:
           # Use GitHub Actions cache to speed up Docker builds by caching layers between builds
           cache-from: type=gha
           cache-to: type=gha,mode=max
+  ##helm package and push:
+    

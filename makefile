@@ -3,7 +3,7 @@
 CLUSTER_NAME := hepapi-cluster
 NAMESPACE := ping-pong
 RELEASE_NAME := ping-pong-app
-CHART_PATH := ./deployments/helm/ping-pong-charts
+CHART_PATH := ./deployments
 
 # if you want to run the cluster setup script, you can use the following command:
 setup:

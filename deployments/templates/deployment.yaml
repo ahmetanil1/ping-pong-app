@@ -1,0 +1,143 @@
+{{- range $key := list "ping-service" "pong-service" "redis" }}
+{{- $v := index $.Values $key }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "hepapi-case.fullname" $ }}-{{ $v.nameSuffix }}-deployment
+  labels:
+    {{- include "hepapi-case.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $v.componentLabel }}
+spec:
+  {{- if not $v.hpa }}
+  replicas: {{ $v.replicaCount }}
+  {{- else }}
+  # Resources managed by HPA, so we don't set replicas here. HPA will manage the number of replicas based on CPU utilization.
+  # replicas: {{ $v.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "hepapi-case.selectorLabels" $ | nindent 6 }}
+      app.kubernetes.io/component: {{ $v.componentLabel }}
+  template:
+    metadata:
+      labels:
+        {{- include "hepapi-case.selectorLabels" $ | nindent 8 }}
+        app.kubernetes.io/component: {{ $v.componentLabel }}
+    spec:
+      # Graceful shutdown period: Provides up to 30 seconds for the pod to terminate cleanly 
+      # before Kubernetes forcibly kills the container with SIGKILL.
+      {{- if or (eq $key "ping-service") (eq $key "pong-service") }}
+      terminationGracePeriodSeconds: 30
+      # Security context is set to run the container as a non-root user with a specific user ID (65532). 
+      # This enhances security by preventing the container from running with root privileges.
+      securityContext:
+        runAsNonRoot: {{ $v.securityContext.runAsNonRoot }}
+        runAsUser: {{ $v.securityContext.runAsUser }}
+      {{- end }}
+      {{- if $.Values.global.nodeSelectors.application }}
+      nodeSelector:
+        workload: {{ $.Values.global.nodeSelectors.application | quote }}
+      {{- end }}
+      containers:
+        - name: {{ $v.componentLabel }}
+          image: "{{ $v.image.repository }}:{{ $v.image.tag }}"
+          imagePullPolicy: {{ $v.image.pullPolicy }}
+          {{- if or (eq $key "ping-service") (eq $key "pong-service") }}
+          # Pre-stop hook: Pauses container termination for 5 seconds to allow Kubernetes DNS 
+          # and Ingress/Service endpoints to update, ensuring zero-downtime during rolling updates.
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 5"]
+          # non-root user is used to run the container (same as the Dockerfile)
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          {{- end }}
+          ports:
+            - containerPort: {{ $v.service.port }}
+              name: {{ $v.service.name }}
+          env:
+            {{- if eq $key "ping-service" }}
+            - name: PONG_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "hepapi-case.fullname" $ }}-{{ $v.nameSuffix }}-config
+                  key: PONG_SERVICE_URL
+            - name: PING_SERVICE_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "hepapi-case.fullname" $ }}-{{ $v.nameSuffix }}-config
+                  key: PING_SERVICE_PORT
+            {{- else if eq $key "pong-service" }}
+            - name: DB_HOST
+              value: {{ include "hepapi-case.fullname" $ }}-{{ $.Values.postgres.serviceResourceName }}
+            - name: DB_PORT
+              value: {{ $.Values.postgres.service.port | quote }}
+            - name: DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "hepapi-case.fullname" $ }}-{{ $.Values.postgres.nameSuffix }}-config
+                  key: POSTGRES_DB
+            - name: DB_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "hepapi-case.fullname" $ }}-{{ $.Values.postgres.nameSuffix }}-config
+                  key: POSTGRES_USER
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "hepapi-case.fullname" $ }}-{{ $.Values.postgres.nameSuffix }}-secret
+                  key: POSTGRES_PASSWORD
+            - name: PONG_SERVICE_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "hepapi-case.fullname" $ }}-{{ $v.nameSuffix }}-config
+                  key: PONG_SERVICE_PORT
+            - name: REDIS_HOST
+              value: {{ include "hepapi-case.fullname" $ }}-{{ $.Values.redis.serviceResourceName }}
+            - name: REDIS_PORT
+              value: {{ $.Values.redis.service.port | quote }}
+            {{- else if eq $key "redis" }}
+            - name: REDIS_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "hepapi-case.fullname" $ }}-{{ $v.nameSuffix }}-config
+                  key: REDIS_PORT
+            {{- end }}
+          resources:
+            {{- toYaml $v.resources | nindent 12 }}
+          livenessProbe:
+            {{- if eq $key "redis" }}
+            exec:
+              command:
+                - redis-cli
+                - ping
+            {{- else }}
+            httpGet:
+              path: /healthz/liveness
+              port: {{ $v.service.port }}
+            {{- end }}
+            initialDelaySeconds: 2
+            periodSeconds: 3
+            timeoutSeconds: 1
+            failureThreshold: 3
+          readinessProbe:
+            {{- if eq $key "redis" }}
+            exec:
+              command:
+                - redis-cli
+                - ping
+            {{- else }}
+            httpGet:
+              path: /healthz/readiness
+              port: {{ $v.service.port }}
+            {{- end }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+{{- end }}
