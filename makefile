@@ -24,6 +24,14 @@ load-images: build-images
 	@minikube image load ping-service:latest -p $(CLUSTER_NAME)
 	@minikube image load pong-service:latest -p $(CLUSTER_NAME)
 
+# Builds dependencies and runs helm lint to validate the chart locally before pushing
+lint:
+	@echo "Building Helm dependencies..."
+	@helm dependency build $(CHART_PATH) > /dev/null 2>&1
+	@echo "Linting Helm charts..."
+	@helm lint $(CHART_PATH)
+	@rm -f $(CHART_PATH)/charts/*.tgz $(CHART_PATH)/Chart.lock
+
 # Starts all services if they are not already running. If they are already running, updates the services.
 deploy: load-images
 	@echo "Deploying the application via Helm..."
