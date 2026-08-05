@@ -25,11 +25,8 @@ spec:
         {{- include "hepapi-case.selectorLabels" $ | nindent 8 }}
         app.kubernetes.io/component: {{ $v.componentLabel }}
     spec:
-      # Graceful shutdown period: Provides up to 30 seconds for the pod to terminate cleanly 
-      # before Kubernetes forcibly kills the container with SIGKILL.
       {{- if or (eq $key "ping-service") (eq $key "pong-service") }}
-      terminationGracePeriodSeconds: 30
-      # Security context is set to run the container as a non-root user with a specific user ID (65532). 
+      # Security context is set to run the container as a non-root user with a specific user ID (65532 => distroless image userID). 
       # This enhances security by preventing the container from running with root privileges.
       securityContext:
         runAsNonRoot: {{ $v.securityContext.runAsNonRoot }}
@@ -49,10 +46,12 @@ spec:
           lifecycle:
             preStop:
               exec:
+                # Graceful shutdown period: Provides up to 30 seconds for the pod to terminate cleanly 
+                # before Kubernetes forcibly kills the container with SIGKILL.
                 command: ["/bin/sh", "-c", "sleep 5"]
+                terminationGracePeriodSeconds: 30
           # non-root user is used to run the container (same as the Dockerfile)
           securityContext:
-            allowPrivilegeEscalation: false
             capabilities:
               drop:
                 - ALL
