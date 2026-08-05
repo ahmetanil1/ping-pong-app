@@ -1,6 +1,0 @@
-apiVersion: v2
-name: hepapi-case
-description: Helm chart for Go Microservices (Ping-Pong) with PostgreSQL and Redis
-type: application
-version: 0.1.0
-appVersion: 1.0.0
