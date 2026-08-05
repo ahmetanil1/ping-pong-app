@@ -18,6 +18,7 @@
 
 
 {{- define "hepapi-case.labels" -}}
+# helm.sh/chart => The name and version of the Helm chart used to deploy the application. This label helps identify the specific chart version that was used for deployment, which is useful for tracking and managing releases.
 helm.sh/chart: {{ include "hepapi-case.name" . }}-{{ .Chart.Version | replace "+" "_" }}
 {{ include "hepapi-case.selectorLabels" . }}
 {{- if .Chart.AppVersion }}

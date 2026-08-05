@@ -6,6 +6,7 @@ replicaCount: 1
 image:
   repository: postgres
   tag: 15-alpine
+  # IfNotPresent => The image will be pulled only if it is not already present on the node.
   pullPolicy: IfNotPresent
 config:
   user: "postgres"

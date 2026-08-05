@@ -6,6 +6,7 @@ replicaCount: 2
 image:
   repository: ping-service
   tag: latest
+  # Never => The image will not be pulled from the registry, it will use the local image if available.
   pullPolicy: Never
 service:
   type: NodePort

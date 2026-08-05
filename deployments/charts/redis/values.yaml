@@ -7,6 +7,7 @@ replicaCount: 1
 image:
   repository: redis
   tag: 7-alpine
+  # IfNotPresent => The image will be pulled only if it is not already present on the node.
   pullPolicy: IfNotPresent
 service:
   type: ClusterIP
