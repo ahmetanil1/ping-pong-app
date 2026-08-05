@@ -11,7 +11,7 @@ metadata:
 data:
 
   {{- if eq $key "ping-service" }}
-  PONG_SERVICE_URL: "http://{{ include "hepapi-case.fullname" $ }}-{{ $.Values.pongService.serviceResourceName }}:{{ $.Values.pongService.service.port }}"
+  PONG_SERVICE_URL: "http://{{ include "hepapi-case.fullname" $ }}-{{ (index $.Values "pong-service").serviceResourceName }}:{{ (index $.Values "pong-service").service.port }}"
   PING_SERVICE_PORT: {{ $v.service.port | quote }}
 
   {{- else if eq $key "pong-service" }}

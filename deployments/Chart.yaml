@@ -6,10 +6,10 @@ version: 0.1.0
 appVersion: 1.0.0
 
 dependencies:
-  - name: pingService
+  - name: ping-service
     version: 0.1.0
     repository: "file://charts/ping-service"
-  - name: pongService
+  - name: pong-service
     version: 0.1.0
     repository: "file://charts/pong-service"
   - name: redis
