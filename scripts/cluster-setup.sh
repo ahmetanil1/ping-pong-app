@@ -69,10 +69,11 @@ echo -e "${YELLOW}Waiting for Ingress deployment to be created in API server...$
 sleep 3
 # Why we patch the Ingress deployment:
 # If we don't patch it, the K8s scheduler might randomly place the Ingress pod on the Database Node before the taint is applied.
-# Since the taint is "NoSchedule" (which prevents new scheduling but doesn't evict existing pods), Ingress would stay there.
 # This breaks database isolation, consumes DB node resources, and creates an unpredictable topology upon restarts.
 # By patching with a nodeSelector, we strictly pin the Ingress to the Application Node, keeping the DB Node completely isolated.
 
+# Since the taint is "NoSchedule" (which prevents new scheduling but doesn't evict existing pods), Ingress would stay there.
+# if any pod already exists on the DB node, it will remain there until it is deleted or evicted. 
 kubectl taint node "$CLUSTER_NAME" workload=database:NoSchedule --overwrite
 kubectl config use-context "$CLUSTER_NAME" > /dev/null # Set the current context to the created cluster
 

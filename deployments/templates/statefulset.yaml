@@ -18,9 +18,20 @@ spec:
         {{- include "hepapi-case.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: {{ .Values.postgres.componentLabel }}
     spec:
+      # Node affinity and tolerations are used to ensure that the PostgreSQL pods are scheduled on nodes that are designated for database workloads.
+      # This helps in isolating the database from other workloads, improving performance and security.
       {{- if .Values.global.nodeSelectors.database }}
-      nodeSelector:
-        workload: {{ .Values.global.nodeSelectors.database | quote }}
+      affinity:
+        nodeAffinity:
+          # If there are no other Nodes in the environment that meet the tolerance, the Pod cannot schedule to the new Node.
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: workload
+                    operator: In
+                    values:
+                      - {{ .Values.global.nodeSelectors.database }}
+      # Only toleration doesn't guarantee that the pod will be scheduled on a node with the matching taint, but it allows the pod to be scheduled on such nodes if they are available.
       {{- end }}
       tolerations:
         - key: "workload"
@@ -104,7 +115,8 @@ spec:
       spec:
         accessModes:
           - {{ .Values.postgres.persistence.accessMode }}
-        {{- if .Values.postgres.persistence.storageClass }}
+        # storageClassName is set to null to use the default storage class of the cluster
+        {{- if not (kindIs "invalid" .Values.postgres.persistence.storageClass) }} 
         storageClassName: {{ .Values.postgres.persistence.storageClass | quote }}
         {{- end }}
         resources:

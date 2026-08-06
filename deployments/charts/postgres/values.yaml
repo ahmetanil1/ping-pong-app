@@ -16,9 +16,12 @@ config:
 secret:
   password: "postgres"
 persistence:
-  # storage class is set to empty string to use the default storage class of the cluster
-  # If you want to use a specific storage class, you can set the value of storageClass to the name of the desired storage class like AWS EBS.
-  storageClass: ""
+  # storageClass: null => Use the default storage class of the cluster (Dynamic Provisioning Enabled)
+  # storageClass: ""   => Disable dynamic provisioning and default storage class (Static PV matching only)
+  # storageClass: "gp3" => Use a specific storage class (e.g. AWS EBS)
+  storageClass: null
+  # ReadWriteOnce => The volume can be mounted as read-write by a single node.
+  # ReadWriteMany => The volume can be mounted as read-write by many nodes. Pods on the different nodes can read and write to the same volume.
   accessMode: ReadWriteOnce
   size: 2Gi
 service:
