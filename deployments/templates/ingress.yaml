@@ -1,34 +1,35 @@
-{{- $pingValues := index .Values "ping-service" }}
-{{- if $pingValues.ingress.enabled -}}
+{{- if .Values.ingress.enabled -}}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "hepapi-case.fullname" . }}-{{ $pingValues.serviceResourceName }}-ingress
+  name: {{ include "hepapi-case.fullname" . }}-ingress
   labels:
     {{- include "hepapi-case.labels" . | nindent 4 }}
-    app.kubernetes.io/component: {{ $pingValues.componentLabel }}
-  {{- if $pingValues.ingress.annotations }}
+    app.kubernetes.io/component: ingress
+  {{- if .Values.ingress.annotations }}
   annotations:
-    {{- toYaml $pingValues.ingress.annotations | nindent 4 }}
+    {{- toYaml .Values.ingress.annotations | nindent 4 }}
   {{- end }}
 spec:
-  ingressClassName: {{ $pingValues.ingress.className }}
+  ingressClassName: {{ .Values.ingress.className }}
   rules:
-  {{- range $pingValues.ingress.hosts }}
+  {{- range .Values.ingress.hosts }}
     - {{- if .host }}
       host: {{ .host | quote }}
       {{- end }}
       http:
         paths:
         {{- range .paths }}
+          {{- $targetServiceName := .targetService }}
+          {{- $targetServiceValues := index $.Values $targetServiceName }}
           - path: {{ .path }}
             pathType: {{ .pathType }}
+            # The backend service that will handle the requests matching the path. (ping-service)
             backend:
-              # The backend service that will handle the requests matching the path. (ping-service)
               service:
-                name: {{ include "hepapi-case.fullname" $ }}-{{ $pingValues.serviceResourceName }}
+                name: {{ include "hepapi-case.fullname" $ }}-{{ $targetServiceValues.serviceResourceName }}
                 port:
-                  number: {{ $pingValues.service.port }}
+                  number: {{ $targetServiceValues.service.port }}
         {{- end }}
   {{- end }}
 {{- end }}

@@ -27,26 +27,3 @@ hpa:
 securityContext:
   runAsNonRoot: true
   runAsUser: 65532
-
-# Why we add ingress here?
-# In the previous design, the ping service also performed the function of ingress; it distributed requests to pong and received external requests.
-# However, now ingress receives the external requests, but the ping service still distributes the requests to pong. We created an SoC here, which is why we connected it directly to ping.
-ingress:
-  enabled: true
-  className: "nginx"
-  annotations:
-    # we dont have any TLS certificate for this service, so we need to disable the redirect to HTTPS.
-    nginx.ingress.kubernetes.io/ssl-redirect: "false"
-  hosts:
-    # host: "" => This means that the ingress will accept requests from any host.
-    # If you want to restrict access to a specific host, you can set the host value to that specific domain name.
-    - host: ""
-      # The only thing to look at is the path that Ingress will listen for.
-      paths:
-        # The path / means that any request to the root of the host will be routed to the ping service. (ui)
-        - path: /
-          pathType: Prefix
-
-        - path: /api/v1/ping
-          # prefix means that any request starting with /api/v1/ping will be routed to the ping service.(endpoint)
-          pathType: Prefix
