@@ -1,23 +1,7 @@
 name: Ping-Pong CI
 
 on:
-  push:
-    branches:
-      - main
-    # every push to main will trigger the workflow, except for changes to the following files
-    paths-ignore:
-      - "**.md"
-      - ".gitignore"
-      - ".dockerignore"
-      - ".env*"
-  pull_request:
-    branches:
-      - main
-    paths-ignore:
-      - "**.md"
-      - ".gitignore"
-      - ".dockerignore"
-      - ".env*"
+  workflow_dispatch:
 
 jobs:
   # ==========================================
