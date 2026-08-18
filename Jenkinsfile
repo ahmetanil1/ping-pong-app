@@ -91,10 +91,16 @@ kind: Pod
 spec:
   serviceAccountName: jenkins-agent
 
+  # The Docker socket exists on the Minikube application node.
+  # It replaces the DinD daemon for this local development environment.
+  nodeSelector:
+    workload: application
+
   volumes:
-    # Docker layers exist only while this build Pod exists.
-    - name: docker-storage
-      emptyDir: {}
+    - name: docker-socket
+      hostPath:
+        path: /var/run/docker.sock
+        type: Socket
 
   containers:
     # The Kubernetes plugin automatically adds the jnlp container.
@@ -110,24 +116,9 @@ spec:
       command:
         - cat
       tty: true
-      env:
-        - name: DOCKER_HOST
-          value: tcp://127.0.0.1:2375
-
-    - name: dind
-      image: docker:27.5.1-dind
-      securityContext:
-        # Required by Docker-in-Docker in this local Minikube environment.
-        privileged: true
-      command:
-        - dockerd
-      args:
-        # The Docker API is reachable only inside this agent Pod.
-        - --host=tcp://127.0.0.1:2375
-        - --tls=false
       volumeMounts:
-        - name: docker-storage
-          mountPath: /var/lib/docker
+        - name: docker-socket
+          mountPath: /var/run/docker.sock
 '''
                 }
             }
@@ -165,16 +156,14 @@ spec:
                         sh '''
                             set -eu
 
-                            for attempt in $(seq 1 30); do
-                                if docker info > /dev/null 2>&1; then
-                                    break
-                                fi
-
-                                echo "Waiting for the Docker daemon..."
-                                sleep 2
-                            done
-
+                            # Verify that the mounted Minikube node Docker socket is reachable.
                             docker info > /dev/null
+
+                            # The agent Pod is ephemeral, but logout is still performed on every exit path.
+                            cleanup() {
+                                docker logout > /dev/null 2>&1 || true
+                            }
+                            trap cleanup EXIT
 
                             echo "$DOCKERHUB_TOKEN" | docker login \
                                 --username "$DOCKERHUB_USERNAME" \
@@ -195,8 +184,6 @@ spec:
 
                             docker push "$DOCKERHUB_USERNAME/ping-service:latest"
                             docker push "$DOCKERHUB_USERNAME/pong-service:latest"
-
-                            docker logout
                         '''
                     }
                 }
