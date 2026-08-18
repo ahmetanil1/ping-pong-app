@@ -10,7 +10,7 @@ controller:
       memory: 1Gi
     limits:
       cpu: "1"
-      memory: 2Gi
+      memory: 4Gi
 
   podSecurityContextOverride:
     runAsUser: 1000

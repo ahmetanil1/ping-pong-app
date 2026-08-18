@@ -58,10 +58,10 @@ spec:
                                 set -eu
 
                                 cd ping-service
-                                GOMAXPROCS=1 go test -p 1 -v ./...
+                                GOMAXPROCS=1 go test -p 1 -v .
 
                                 cd ../pong-service
-                                GOMAXPROCS=1 go test -p 1 -v ./...
+                                GOMAXPROCS=1 go test -p 1 -v .
                             '''
                         }
                     }
