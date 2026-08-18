@@ -1,0 +1,9 @@
+ping-service:
+  image:
+    repository: docker.io/ahmetanil/ping-service
+    pullPolicy: IfNotPresent
+
+pong-service:
+  image:
+    repository: docker.io/ahmetanil/pong-service
+    pullPolicy: IfNotPresent
