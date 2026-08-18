@@ -33,6 +33,7 @@ controller:
   # it's necessary to use the withCredentials step in the pipeline
   additionalPlugins:
     - credentials-binding
+    - timestamper
 
   additionalExistingSecrets:
     - name: dockerhub-credentials
