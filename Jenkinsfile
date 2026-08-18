@@ -101,9 +101,15 @@ spec:
             steps {
                 container('git') {
                     script {
-                        // Uses the checked-out commit as an immutable Docker image tag.
+                         // Jenkins checkout scm can run through the JNLP agent launcher,
+                         // while this command runs in the Git container.
+                         // Both containers share the same workspace but can use different Linux users.
+                         // Git requires the shared ephemeral workspace to be explicitly trusted.
                         env.IMAGE_TAG = sh(
-                            script: 'git rev-parse --short=7 HEAD',
+                            script: '''
+                                git config --global --add safe.directory "$WORKSPACE"
+                                git rev-parse --short=7 HEAD
+                            ''',
                             returnStdout: true
                         ).trim()
                     }
