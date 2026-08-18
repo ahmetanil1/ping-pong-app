@@ -131,8 +131,7 @@ spec:
 
                 container('git') {
                     script {
-                        // Jenkins checkout scm may use the JNLP launcher.
-                        // Trust this temporary shared workspace before reading Git metadata.
+                        // The SHA tag is immutable and will be used by the CD stage.
                         env.IMAGE_TAG = sh(
                             script: '''
                                 git config --global --add safe.directory "$WORKSPACE"
@@ -189,11 +188,81 @@ spec:
                 }
             }
         }
+
+        stage('Deploy to Kubernetes') {
+            agent {
+                kubernetes {
+                    yaml '''
+apiVersion: v1
+kind: Pod
+spec:
+  serviceAccountName: jenkins-agent
+
+  nodeSelector:
+    workload: application
+
+  containers:
+    # The Kubernetes plugin automatically adds the jnlp container.
+
+    - name: git
+      image: alpine/git:2.47.2
+      command:
+        - cat
+      tty: true
+
+    - name: helm
+      image: alpine/helm:3.17.0
+      command:
+        - cat
+      tty: true
+'''
+                }
+            }
+
+            stages {
+                stage('Checkout Deployment Chart') {
+                    steps {
+                        // This Pod has a new empty workspace and needs the Helm chart files.
+                        container('git') {
+                            checkout scm
+                        }
+                    }
+                }
+
+                stage('Helm Deploy and Verify Health') {
+                    steps {
+                        container('helm') {
+                            sh '''
+                                set -eu
+
+                                helm dependency build deployments
+
+                                # --wait checks Kubernetes resource readiness.
+                                # --atomic rolls back the release if readiness fails.
+                                helm upgrade --install ping-pong-app deployments \
+                                    --namespace ping-pong \
+                                    --values deployments/values-ci.yaml \
+                                    --set-string "ping-service.image.tag=$IMAGE_TAG" \
+                                    --set-string "pong-service.image.tag=$IMAGE_TAG" \
+                                    --wait \
+                                    --atomic \
+                                    --timeout 5m
+
+                                # Confirms that Helm records the release as deployed.
+                                helm status ping-pong-app \
+                                    --namespace ping-pong \
+                                    --show-desc
+                            '''
+                        }
+                    }
+                }
+            }
+        }
     }
 
     post {
         success {
-            echo 'CI completed: tests passed, Helm chart validated, and images were pushed.'
+            echo 'CI/CD completed: tests passed, images were pushed, and Kubernetes rollout succeeded.'
         }
 
         failure {
