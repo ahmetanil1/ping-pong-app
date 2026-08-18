@@ -44,12 +44,8 @@ spec:
           {{- if or (eq $key "ping-service") (eq $key "pong-service") }}
           # Pre-stop hook: Pauses container termination for 5 seconds to allow Kubernetes DNS 
           # and Ingress/Service endpoints to update, ensuring zero-downtime during rolling updates.
-          lifecycle:
-            preStop:
-              exec:
-                # Graceful shutdown period: Provides up to 30 seconds for the pod to terminate cleanly 
-                # before Kubernetes forcibly kills the container with SIGKILL.
-                command: ["/bin/sh", "-c", "sleep 5"]
+          # The Go applications handle SIGTERM during Pod termination.
+          # terminationGracePeriodSeconds gives them 30 seconds for graceful shutdown.
           # non-root user is used to run the container (same as the Dockerfile)
           securityContext:
             capabilities:

@@ -11,6 +11,7 @@ image:
 config:
   user: "postgres"
   db: "pingpongdb"
+  port: 5432
 # this password is used for the demonstration purpose only.
 # In production, we have to use a more security tools like HashiCorp Vault or AWS Secrets Manager to manage the secrets.
 secret:
