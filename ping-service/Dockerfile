@@ -6,7 +6,7 @@ COPY go.sum go.mod ./
 RUN go mod download
 
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -o ping-service ./cmd/main.go
+RUN CGO_ENABLED=0 GOOS=linux GOMAXPROCS=1 go build -p 1 -o ping-service ./cmd/main.go
 
 FROM gcr.io/distroless/static-debian12:nonroot
 

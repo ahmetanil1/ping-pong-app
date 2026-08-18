@@ -18,7 +18,7 @@ COPY . .
 # CGO_ENABLED=0 disables CGO, which is necessary for building a statically linked binary. This is important for running the binary in a minimal container without the need for additional shared libraries.
 # it makes the binary more portable and reduces the size of the final image.
 # GOOS=linux ensures the binary is built for Linux, which is the target OS for our container.
-RUN CGO_ENABLED=0 GOOS=linux go build -o pong-service ./cmd/main.go
+RUN CGO_ENABLED=0 GOOS=linux GOMAXPROCS=1 go build -p 1 -o pong-service ./cmd/main.go
 
 # Stage 2: Create a minimal image for the application
 FROM gcr.io/distroless/static-debian12:nonroot
