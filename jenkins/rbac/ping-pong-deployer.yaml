@@ -1,0 +1,69 @@
+# get: Reads a single Kubernetes resource by its name.
+# list: Returns all resources of the requested type in the namespace.
+# watch: Continuously observes resource changes during rollout and Helm wait operations.
+# create: Creates a new Kubernetes resource when Helm installs the application.
+# update: Replaces an existing resource with a new complete definition.
+# patch: Updates only the changed fields of an existing resource.
+# delete: Removes resources during Helm uninstall, rollback, or atomic deployment cleanup.
+
+
+# This Role grants deploy permission only inside the ping-pong namespace.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: jenkins-ping-pong-deployer
+  namespace: ping-pong
+rules:
+  # Helm creates and updates application configuration and Services.
+  - apiGroups: [""]
+    resources: ["configmaps", "secrets", "services"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # Helm and rollout checks need to manage Deployments and StatefulSets.
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # ReplicaSets are created by Deployments.
+  # The agent only needs to observe them during rollout checks.
+  - apiGroups: ["apps"]
+    resources: ["replicasets"]
+    verbs: ["get", "list", "watch"]
+
+  # Helm creates the application HPA resources.
+  - apiGroups: ["autoscaling"]
+    resources: ["horizontalpodautoscalers"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # Helm creates the application Ingress resource.
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # Helm --wait and later rollout troubleshooting need Pod visibility.
+  # kubectl auth can-i list pods -n ping-pong --as=system:serviceaccount:jenkins:jenkins-agent => example
+  - apiGroups: [""]
+    resources: ["pods", "persistentvolumeclaims", "events"]
+    verbs: ["get", "list", "watch"]
+
+  # Allows the pipeline to read Pod logs when a deployment fails.
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+
+---
+# This binds the Jenkins agent ServiceAccount from the jenkins namespace
+# to the deploy Role in the ping-pong namespace.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: jenkins-agent-ping-pong-deployer
+  namespace: ping-pong
+subjects:
+  - kind: ServiceAccount
+    name: jenkins-agent
+    namespace: jenkins
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: jenkins-ping-pong-deployer

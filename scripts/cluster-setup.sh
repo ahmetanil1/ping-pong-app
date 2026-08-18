@@ -40,6 +40,8 @@ echo -e "${YELLOW}[3/4] Preparing minikube cluster...${NC}"
 if minikube status -p "$CLUSTER_NAME" &> /dev/null; then
     echo -e "${YELLOW}Minikube cluster '$CLUSTER_NAME' already exists.${NC}"
 else
+    minikube delete -p "$CLUSTER_NAME" &> /dev/null || true
+
     echo -e "${YELLOW}Creating minikube cluster '$CLUSTER_NAME'...${NC}"
     minikube start \
         -p "$CLUSTER_NAME" \

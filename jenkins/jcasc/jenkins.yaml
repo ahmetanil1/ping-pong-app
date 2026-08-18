@@ -1,0 +1,17 @@
+jenkins:
+  systemMessage: |
+    This Jenkins controller is configured with JCasC
+    and runs build agents dynamically on Kubernetes.
+
+credentials:
+  system:
+    domainCredentials:
+      - credentials:
+          - usernamePassword:
+              scope: GLOBAL
+              id: "dockerhub-credentials"
+              description: "Docker Hub credential for Ping-Pong image builds"
+              # The username and password are injected from the Kubernetes secret named "dockerhub-credentials
+              # These secrets created by jenkins-secret in makefile 
+              username: ${dockerhub-credentials-dockerhub-username}
+              password: ${dockerhub-credentials-dockerhub-token}
